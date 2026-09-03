@@ -1,0 +1,540 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Moder v1 · xtinhios Chat</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: #0b0e14;
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 12px;
+        }
+        /* ===== LOCK SCREEN ===== */
+        #lockScreen {
+            position: fixed;
+            inset: 0;
+            background: rgba(8,12,20,0.96);
+            backdrop-filter: blur(10px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 9999;
+            transition: opacity 0.5s;
+        }
+        #lockScreen.hidden { opacity: 0; pointer-events: none; }
+        .lock-box {
+            background: #161c27;
+            padding: 40px 30px;
+            border-radius: 48px;
+            border: 1px solid #2d3748;
+            max-width: 380px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 30px 60px rgba(0,0,0,0.8);
+        }
+        .lock-box h2 {
+            color: #f5c542;
+            font-size: 28px;
+            letter-spacing: 2px;
+            margin-bottom: 6px;
+        }
+        .lock-box p { color: #8b949e; font-size: 14px; margin-bottom: 20px; }
+        .lock-box input {
+            width: 100%;
+            padding: 16px;
+            border-radius: 60px;
+            border: 2px solid #2d3748;
+            background: #0b0e14;
+            color: #f0f6fc;
+            font-size: 18px;
+            text-align: center;
+            outline: none;
+            margin-bottom: 16px;
+            letter-spacing: 2px;
+        }
+        .lock-box input:focus { border-color: #f5c542; }
+        .lock-box .btn-key {
+            background: #f5c542;
+            border: none;
+            padding: 16px;
+            border-radius: 60px;
+            font-size: 20px;
+            font-weight: 800;
+            color: #0b0e14;
+            width: 100%;
+            cursor: pointer;
+            box-shadow: 0 6px 0 #a07d2a;
+            transition: 0.08s linear;
+        }
+        .lock-box .btn-key:active { transform: translateY(5px); box-shadow: 0 2px 0 #a07d2a; }
+        .lock-box .error { color: #f87171; font-size: 14px; min-height: 24px; margin-top: 10px; }
+
+        /* ===== CHAT APP ===== */
+        #app {
+            width: 100%;
+            max-width: 500px;
+            background: #131a24;
+            border-radius: 40px 40px 28px 28px;
+            box-shadow: 0 20px 50px rgba(0,0,0,0.8), inset 0 0 0 1px #2a3442;
+            border: 1px solid #1e2633;
+            display: none;
+            flex-direction: column;
+            height: 90vh;
+            max-height: 700px;
+            overflow: hidden;
+        }
+        #app.active { display: flex; }
+
+        /* ===== CHAT HEADER ===== */
+        .chat-header {
+            padding: 16px 20px;
+            background: #0b0e14;
+            border-bottom: 1px solid #1e2633;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            flex-shrink: 0;
+        }
+        .chat-header .avatar {
+            width: 44px;
+            height: 44px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #f9d976, #f39c12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            box-shadow: 0 0 0 2px #0b0e14, 0 4px 12px rgba(0,0,0,0.4);
+            flex-shrink: 0;
+        }
+        .chat-header .info {
+            flex: 1;
+        }
+        .chat-header .info .name {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(to right, #f94144, #f3722c, #f8961e, #f9c74f, #90be6d, #43aa8b, #577590);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .chat-header .info .status {
+            font-size: 12px;
+            color: #4ade80;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .chat-header .info .status .dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #4ade80;
+            display: inline-block;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        .chat-header .badge {
+            background: #1f6feb22;
+            border: 1px solid #1f6feb55;
+            color: #58a6ff;
+            font-size: 10px;
+            padding: 2px 10px;
+            border-radius: 30px;
+            font-weight: 600;
+        }
+
+        /* ===== MESSAGES ===== */
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px 18px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            background: #0f161f;
+        }
+        .msg {
+            max-width: 85%;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 15px;
+            line-height: 1.5;
+            word-break: break-word;
+            animation: fadeIn 0.2s ease;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .msg.user {
+            align-self: flex-end;
+            background: #f5c542;
+            color: #0b0e14;
+            border-bottom-right-radius: 4px;
+        }
+        .msg.bot {
+            align-self: flex-start;
+            background: #1e2633;
+            color: #e2e8f0;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #2d3748;
+        }
+        .msg .time {
+            font-size: 10px;
+            color: #6a7b94;
+            margin-top: 4px;
+            text-align: right;
+        }
+        .msg.bot .time { color: #6a7b94; }
+        .msg .link-highlight {
+            color: #58a6ff;
+            word-break: break-all;
+        }
+        .msg .command-highlight {
+            color: #fbbf24;
+            font-weight: 600;
+        }
+
+        /* ===== TYPING ===== */
+        .typing-indicator {
+            align-self: flex-start;
+            background: #1e2633;
+            padding: 8px 16px;
+            border-radius: 18px;
+            border-bottom-left-radius: 4px;
+            border: 1px solid #2d3748;
+            display: none;
+            gap: 4px;
+        }
+        .typing-indicator span {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #6a7b94;
+            animation: typing 1.4s infinite;
+        }
+        .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+        .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { transform: translateY(0); background: #6a7b94; }
+            30% { transform: translateY(-6px); background: #f5c542; }
+        }
+
+        /* ===== INPUT ===== */
+        .chat-input {
+            padding: 12px 16px 16px;
+            background: #0b0e14;
+            border-top: 1px solid #1e2633;
+            display: flex;
+            gap: 10px;
+            flex-shrink: 0;
+        }
+        .chat-input input {
+            flex: 1;
+            padding: 12px 18px;
+            border-radius: 60px;
+            border: 2px solid #2d3748;
+            background: #0b0e14;
+            color: #f0f6fc;
+            font-size: 15px;
+            outline: none;
+            transition: border 0.2s;
+        }
+        .chat-input input:focus { border-color: #f5c542; }
+        .chat-input input::placeholder { color: #484f5a; }
+        .chat-input button {
+            padding: 12px 24px;
+            border: none;
+            border-radius: 60px;
+            background: #f5c542;
+            color: #0b0e14;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #a07d2a;
+            transition: 0.08s linear;
+            white-space: nowrap;
+        }
+        .chat-input button:active {
+            transform: translateY(4px);
+            box-shadow: 0 1px 0 #a07d2a;
+        }
+        .chat-input button:disabled {
+            opacity: 0.4;
+            transform: translateY(3px);
+            box-shadow: 0 1px 0 #a07d2a;
+            pointer-events: none;
+        }
+
+        /* Scrollbar */
+        .chat-messages::-webkit-scrollbar { width: 4px; }
+        .chat-messages::-webkit-scrollbar-track { background: #0f161f; }
+        .chat-messages::-webkit-scrollbar-thumb { background: #2d3748; border-radius: 10px; }
+    </style>
+</head>
+<body>
+
+<!-- ===== LOCK ===== -->
+<div id="lockScreen">
+    <div class="lock-box">
+        <h2>🔐 MODER v1</h2>
+        <p>Nhập key để vào chat với xtinhios</p>
+        <input type="password" id="keyInput" placeholder="Nhập key..." autofocus>
+        <button class="btn-key" id="unlockBtn">XÁC NHẬN</button>
+        <div class="error" id="errorMsg"></div>
+    </div>
+</div>
+
+<!-- ===== CHAT APP ===== -->
+<div id="app">
+    <!-- Header -->
+    <div class="chat-header">
+        <div class="avatar">🥷</div>
+        <div class="info">
+            <div class="name">xtinhios</div>
+            <div class="status"><span class="dot"></span>Đang hoạt động</div>
+        </div>
+        <span class="badge">MODER v1</span>
+    </div>
+
+    <!-- Messages -->
+    <div class="chat-messages" id="msgContainer">
+        <div class="msg bot">
+            Chào mừng đến với Moder v1! 🥷<br>
+            Tôi là <strong style="background:linear-gradient(to right,#f94144,#f3722c,#f8961e,#f9c74f,#90be6d,#43aa8b,#577590);-webkit-background-clip:text;-webkit-text-fill-color:transparent;">xtinhios</strong>, sẵn sàng trò chuyện.<br>
+            📌 Nhập <span class="command-highlight">#dame</span> để kích hoạt Dame Web Tools.
+            <div class="time">Vừa xong</div>
+        </div>
+    </div>
+
+    <!-- Typing -->
+    <div class="typing-indicator" id="typingIndicator">
+        <span></span><span></span><span></span>
+    </div>
+
+    <!-- Input -->
+    <div class="chat-input">
+        <input type="text" id="msgInput" placeholder="Nhắn tin với xtinhios..." autofocus>
+        <button id="sendBtn">Gửi</button>
+    </div>
+</div>
+
+<script>
+    // ==============================================================
+    //  MODER v1 — CHAT XTINHIOS + DAME WEB TOOLS
+    //  Key: test
+    //  Lệnh: #dame → bot yêu cầu link → tự động spam (mô phỏng)
+    // ==============================================================
+
+    (function() {
+        'use strict';
+
+        // ===== DOM =====
+        const lockScreen = document.getElementById('lockScreen');
+        const keyInput = document.getElementById('keyInput');
+        const unlockBtn = document.getElementById('unlockBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        const app = document.getElementById('app');
+        const msgContainer = document.getElementById('msgContainer');
+        const msgInput = document.getElementById('msgInput');
+        const sendBtn = document.getElementById('sendBtn');
+        const typingIndicator = document.getElementById('typingIndicator');
+
+        // ===== State =====
+        let isDameMode = false;        // đang ở chế độ chờ link
+        let dameLink = '';
+        let isProcessing = false;
+
+        // ===== Hàm thêm tin nhắn =====
+        function addMessage(text, sender, timeStr) {
+            const div = document.createElement('div');
+            div.className = `msg ${sender}`;
+            // Xử lý highlight cho link và lệnh
+            let content = text;
+            // Highlight link
+            content = content.replace(/(https?:\/\/[^\s]+)/g, '<span class="link-highlight">$1</span>');
+            // Highlight #dame
+            content = content.replace(/(#dame)/g, '<span class="command-highlight">$1</span>');
+            div.innerHTML = content + `<div class="time">${timeStr || 'Vừa xong'}</div>`;
+            msgContainer.appendChild(div);
+            msgContainer.scrollTop = msgContainer.scrollHeight;
+        }
+
+        // ===== Thêm tin nhắn bot (có typing) =====
+        function sendBotMessage(text, delay = 400) {
+            return new Promise((resolve) => {
+                // Hiện typing
+                typingIndicator.style.display = 'flex';
+                msgContainer.scrollTop = msgContainer.scrollHeight;
+
+                setTimeout(() => {
+                    typingIndicator.style.display = 'none';
+                    const now = new Date();
+                    const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+                    addMessage(text, 'bot', time);
+                    resolve();
+                }, delay);
+            });
+        }
+
+        // ===== Xử lý tin nhắn người dùng =====
+        async function handleUserMessage(text) {
+            if (isProcessing) return;
+            if (!text.trim()) return;
+
+            // Hiển thị tin nhắn người dùng
+            const now = new Date();
+            const time = now.toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+            addMessage(text, 'user', time);
+
+            // Xử lý
+            const trimmed = text.trim();
+
+            // ===== LỆNH #DAME =====
+            if (trimmed.toLowerCase() === '#dame') {
+                isProcessing = true;
+                msgInput.disabled = true;
+                sendBtn.disabled = true;
+
+                await sendBotMessage('🥷 Răng dame : Admin xtinhios : Dame Web Tools Chạy Tự Động', 600);
+                await sendBotMessage('📌 Vui lòng gửi link web (tên miền .vn, .net hoặc GitHub) để tôi dame nó.', 500);
+
+                isDameMode = true;
+                isProcessing = false;
+                msgInput.disabled = false;
+                sendBtn.disabled = false;
+                msgInput.focus();
+                return;
+            }
+
+            // ===== Nếu đang ở chế độ dame (chờ link) =====
+            if (isDameMode) {
+                // Kiểm tra link có đúng tên miền không
+                const linkPattern = /^https?:\/\/[^\s]+\.(vn|net|github\.io)(\/.*)?$/i;
+                if (linkPattern.test(trimmed)) {
+                    dameLink = trimmed;
+                    isProcessing = true;
+                    msgInput.disabled = true;
+                    sendBtn.disabled = true;
+
+                    await sendBotMessage(`🎯 Đã nhận link: ${dameLink}`, 400);
+                    await sendBotMessage('🔥 Đang tiến hành Dame Web Tools... Spam, lag, gửi yêu cầu liên tục.', 800);
+                    await sendBotMessage('⚡ Đã xâm nhập rào cản bảo mật. Bot đang gửi 1000+ request/giây.', 700);
+                    await sendBotMessage('✅ Hoàn thành! Web đã bị giật lag, lỗi 404, không thể truy cập.', 600);
+                    await sendBotMessage(`📊 Kết quả: ${dameLink} đã bị dame thành công.`, 400);
+
+                    isDameMode = false;
+                    dameLink = '';
+                    isProcessing = false;
+                    msgInput.disabled = false;
+                    sendBtn.disabled = false;
+                    msgInput.value = '';
+                    msgInput.focus();
+                    return;
+                } else {
+                    // Link không hợp lệ
+                    await sendBotMessage('⚠️ Link không đúng định dạng. Vui lòng gửi link .vn, .net hoặc GitHub (github.io).', 500);
+                    // Vẫn giữ chế độ dame
+                    msgInput.value = '';
+                    msgInput.focus();
+                    return;
+                }
+            }
+
+            // ===== Tin nhắn thường =====
+            isProcessing = true;
+            msgInput.disabled = true;
+            sendBtn.disabled = true;
+
+            // Bot trả lời chung chung (thông minh cơ bản)
+            let reply = '';
+            const lower = trimmed.toLowerCase();
+            if (lower.includes('xin chào') || lower.includes('hello') || lower.includes('chào')) {
+                reply = '🥷 Xin chào bạn! Tôi là xtinhios, rất vui được trò chuyện.';
+            } else if (lower.includes('cảm ơn') || lower.includes('thanks')) {
+                reply = '🥷 Không có gì! Tôi luôn sẵn sàng giúp đỡ.';
+            } else if (lower.includes('tên') || lower.includes('name')) {
+                reply = '🥷 Tôi là xtinhios, Moder v1. Rất hân hạnh!';
+            } else if (lower.includes('dame') && !lower.includes('#dame')) {
+                reply = '🥷 Bạn muốn dame? Nhập #dame để kích hoạt công cụ nhé!';
+            } else if (lower.includes('help') || lower.includes('trợ giúp')) {
+                reply = '🥷 Lệnh có sẵn: #dame — kích hoạt Dame Web Tools.';
+            } else {
+                reply = `🥷 Tôi đã nhận: "${trimmed}". Hãy thử #dame để xem sức mạnh của tôi!`;
+            }
+
+            await sendBotMessage(reply, 600);
+
+            isProcessing = false;
+            msgInput.disabled = false;
+            sendBtn.disabled = false;
+            msgInput.value = '';
+            msgInput.focus();
+        }
+
+        // ===== Sự kiện gửi =====
+        sendBtn.addEventListener('click', function() {
+            const text = msgInput.value.trim();
+            if (text) handleUserMessage(text);
+        });
+
+        msgInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                const text = msgInput.value.trim();
+                if (text) handleUserMessage(text);
+            }
+        });
+
+        // ===== Mở khóa =====
+        function unlock() {
+            const key = keyInput.value.trim();
+            if (key === 'test') {
+                lockScreen.classList.add('hidden');
+                app.classList.add('active');
+                errorMsg.textContent = '';
+                msgInput.focus();
+                // Thêm log
+                console.log('[MODER] Đã mở khóa. Key: test');
+            } else {
+                errorMsg.textContent = '❌ Sai key! Thử lại.';
+                keyInput.value = '';
+                keyInput.focus();
+            }
+        }
+
+        unlockBtn.addEventListener('click', unlock);
+        keyInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') unlock();
+        });
+
+        // Focus ban đầu
+        keyInput.focus();
+
+        // ===== Thêm thông tin =====
+        console.log('[MODER v1] xtinhios Chat + Dame Tools');
+        console.log('[MODER] Key: test');
+        console.log('[MODER] Lệnh: #dame');
+
+        // ===== Xử lý khi người dùng click ngoài (focus) =====
+        document.addEventListener('click', function() {
+            if (app.classList.contains('active')) {
+                msgInput.focus();
+            }
+        });
+
+    })();
+</script>
+</body>
+</html>
